@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meowdoku · 关卡工坊</title>
+  <style>
+    :root{--ink:#202735;--muted:#788394;--paper:#f7f4ee;--card:#fffdf9;--line:#e7e3dc;--coral:#ef765f;--coral-dark:#d85c49;--mint:#9dd7c4;--yellow:#f6d98a;--lav:#c9b9eb;--sky:#9fc7e8;--peach:#f4bea8;--teal:#83c9c4;--shadow:0 20px 60px #14202d12}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,select{font:inherit} button{cursor:pointer;border:0}.shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr;gap:30px;max-width:1440px;margin:auto;padding:30px}
+    aside{display:flex;flex-direction:column;gap:22px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:42px;height:42px;background:var(--coral);border-radius:14px;display:grid;place-items:center;color:white;font-size:22px;box-shadow:0 7px 18px #ef765f4d}.brand h1{font-size:18px;line-height:1.1;margin:0}.brand small{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}.rail-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:var(--shadow)}.rail-card h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}.rule{display:flex;gap:10px;margin:12px 0;align-items:flex-start}.rule b{width:24px;height:24px;background:#f5e9e3;border-radius:8px;display:grid;place-items:center;color:var(--coral-dark);font-size:12px;flex:none}.rule span{font-size:12px;color:#596473}.pill{display:inline-flex;align-items:center;gap:6px;background:#f4f0e9;border-radius:99px;padding:6px 10px;color:#6c7580;font-size:11px}.pill i{width:6px;height:6px;background:#68b99d;border-radius:50%}.content{min-width:0}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:26px}.eyebrow{color:var(--coral-dark);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}.topbar h2{font-size:34px;line-height:1.05;letter-spacing:-.045em;margin:7px 0 8px}.topbar p{color:var(--muted);margin:0;max-width:630px}.mode-toggle{background:var(--ink);color:#fff;border-radius:13px;padding:11px 16px;font-weight:700;white-space:nowrap}.mode-toggle.playing{background:var(--coral)}
+    .workspace{display:grid;grid-template-columns:minmax(420px,1fr) 340px;gap:22px;align-items:start}.board-card,.panel{background:var(--card);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow)}.board-card{padding:22px}.board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.board-head h3{margin:0;font-size:16px}.board-head .sub{color:var(--muted);font-size:12px}.board-wrap{background:#f0ebe3;border-radius:19px;padding:10px;display:grid;place-items:center;min-height:440px}.board{width:min(100%,650px);aspect-ratio:1;display:grid;gap:3px;background:#ddd5cb;padding:3px;border-radius:11px}.cell{position:relative;border-radius:5px;border:1px solid #ffffffa6;display:grid;place-items:center;min-width:0;min-height:0;transition:transform .12s,box-shadow .12s,filter .12s}.cell:hover{filter:brightness(.97);transform:translateY(-1px)}.cell.selected{box-shadow:inset 0 0 0 3px var(--ink),0 0 0 2px #fff}.cell .cat{font-size:clamp(10px,3.5vw,29px);filter:drop-shadow(0 2px 1px #0002)}.cell .mark{font-weight:800;font-size:clamp(8px,2.3vw,20px)}.cell .mark.note{color:#8b7d72}.cell .mark.error{color:#c53c3c}.cell.locked{cursor:not-allowed}.cell.locked:hover{transform:none;filter:none}.panel{padding:21px}.panel h3{margin:0 0 16px;font-size:16px}.field{margin:0 0 17px}.field label{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:8px}.field label span{font-size:11px;color:var(--muted);font-weight:500}.select{width:100%;border:1px solid var(--line);background:#fbfaf7;border-radius:11px;padding:10px 11px;color:var(--ink)}.number-input{width:100%;border:1px solid var(--line);background:#fbfaf7;border-radius:11px;padding:10px 11px;color:var(--ink)}.hint{font-size:11px;color:var(--muted);margin-top:7px}.switch-line{display:flex;justify-content:space-between;align-items:center;background:#faf7f2;border:1px solid var(--line);padding:11px 12px;border-radius:13px}.switch{position:relative;width:40px;height:23px}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#d8d4cc;border-radius:20px;transition:.2s}.slider:before{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px #0002}.switch input:checked+.slider{background:var(--coral)}.switch input:checked+.slider:before{transform:translateX(17px)}.actions{display:grid;gap:9px;margin-top:22px}.primary{background:var(--coral);color:#fff;padding:12px 14px;border-radius:12px;font-weight:800}.primary:hover{background:var(--coral-dark)}.secondary{background:#f0ece5;color:var(--ink);padding:11px 14px;border-radius:12px;font-weight:700}.secondary:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:17px;border-top:1px solid var(--line);padding-top:15px}.status-row{display:flex;justify-content:space-between;margin:7px 0;color:var(--muted);font-size:12px}.status-row strong{color:var(--ink)}.notice{font-size:12px;padding:10px 11px;border-radius:11px;background:#fff5e9;color:#8a633a;margin-top:12px}.notice.ok{background:#edf8f1;color:#3c7a62}.palette{display:flex;flex-wrap:wrap;gap:7px}.swatch{width:28px;height:28px;border-radius:9px;border:2px solid transparent}.swatch.active{border-color:var(--ink);box-shadow:0 0 0 2px #fff}.edit-help{font-size:11px;color:var(--muted);background:#faf7f2;padding:10px;border-radius:11px}.hidden{display:none!important}.playbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:11px 13px;border:1px solid var(--line);border-radius:13px;background:#faf7f2}.lives{color:var(--coral-dark);font-weight:800;letter-spacing:.08em}.progress{color:var(--muted);font-size:12px}.legend{display:flex;gap:15px;color:var(--muted);font-size:11px;margin-top:14px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:10px;height:10px;border-radius:3px}.footer-note{margin-top:18px;color:var(--muted);font-size:11px}.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(12px);opacity:0;background:var(--ink);color:#fff;border-radius:12px;padding:10px 14px;transition:.2s;pointer-events:none;z-index:3}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media(max-width:980px){.shell{grid-template-columns:1fr;padding:20px}.rail-card{display:none}.workspace{grid-template-columns:1fr}.board-wrap{min-height:0}.topbar h2{font-size:28px}}
+    @media(max-width:560px){.shell{padding:14px}.topbar{display:block}.mode-toggle{margin-top:16px}.board-card,.panel{padding:14px;border-radius:20px}.workspace{gap:14px}.board-wrap{padding:7px}.board{gap:2px;padding:2px}.cell{border-radius:3px}}
+    .json-text{width:100%;min-height:150px;resize:vertical;border:1px solid var(--line);background:#fbfaf7;border-radius:11px;padding:10px 11px;color:var(--ink);font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand"><div class="brand-mark">🐾</div><div><h1>Meowdoku<br>关卡工坊</h1><small>Level atelier</small></div></div>
+      <div class="rail-card"><h3>底层规则</h3>
+        <div class="rule"><b>01</b><span>每种颜色区域恰好一只猫，且区域必须连通。</span></div>
+        <div class="rule"><b>02</b><span>每行、每列恰好一只猫。</span></div>
+        <div class="rule"><b>03</b><span>猫咪不能在八方向相邻格出现。</span></div>
+        <div class="rule"><b>04</b><span>单击做笔记，双击才是正式找猫。</span></div>
+      </div>
+      <div class="rail-card"><h3>编辑提示</h3><p class="hint">生成后可以直接点选格子，用右侧色板重绘区域。完成后切换「试玩」验证生命和双击逻辑。</p><span class="pill"><i></i> 本地运行 · 无需联网</span></div>
+    </aside>
+    <main class="content">
+      <div class="topbar"><div><div class="eyebrow">Puzzle constructor / 01</div><h2>把一只猫，藏进<br>一张有秩序的地图。</h2><p>配置棋盘，生成连通色区，然后像玩家一样试玩。每一次双击，都是一次正式的判断。</p></div><button id="modeBtn" class="mode-toggle">进入试玩 →</button></div>
+      <div class="workspace">
+        <section class="board-card">
+          <div id="playbar" class="playbar hidden"><div class="lives" id="lives">♥ ♥ ♥</div><div class="progress" id="progress">已找到 0 / 8</div></div>
+          <div class="board-head"><div><h3 id="boardTitle">关卡画布</h3><div class="sub" id="boardSub">点击格子选择区域 · 颜色从种子猫开始生长</div></div><span class="pill" id="boardBadge"><i></i> 唯一解待验证</span></div>
+          <div class="board-wrap"><div id="board" class="board" aria-label="关卡棋盘"></div></div>
+          <div class="legend"><span><i class="dot" style="background:#8b7d72"></i>普通 X：玩家笔记</span><span><i class="dot" style="background:#c53c3c"></i>红 X：错误且锁定</span><span><i class="dot" style="background:#202735"></i>🐱：已找到</span></div>
+        </section>
+        <section class="panel">
+          <div id="configPanel"><h3>关卡配置</h3>
+            <div class="field"><label>地图大小 <span>4 - 15 格</span></label><input id="size" class="number-input" type="number" min="4" max="15" value="7" inputmode="numeric"><div class="hint">地图为 N × N，固定生成 N 只猫和 N 个颜色区域。</div></div>
+            <div class="field"><label>难度选择 <span>影响区域形状与推理链</span></label><select id="difficulty" class="select"><option value="easy">轻松 · Easy</option><option value="normal" selected>标准 · Normal</option><option value="hard">进阶 · Hard</option><option value="expert">挑战 · Expert</option></select></div>
+            <div class="field"><div class="switch-line"><div><strong>开局显示一只猫</strong><div class="hint">直接计入已找到，无需双击</div></div><label class="switch"><input id="reveal" type="checkbox"><span class="slider"></span></label></div></div>
+            <div class="actions"><button id="generate" class="primary">生成新关卡</button><button id="validate" class="secondary">验证当前关卡</button><button id="copy" class="secondary">复制关卡 JSON</button><button id="export" class="secondary">导出关卡 JSON</button><button id="import" class="secondary">导入关卡 JSON</button><input id="importFile" type="file" accept="application/json,.json" class="hidden"><div class="hint">生成的新关卡已自动验证；修改颜色区域后，再用“验证当前关卡”复核。导入时会自动检查全部硬规则。</div></div>
+            <div class="field" style="margin-top:18px"><label>JSON 字符串 <span>可直接粘贴或复制</span></label><textarea id="jsonText" class="json-text" spellcheck="false" placeholder="粘贴关卡 JSON 字符串…"></textarea><div class="actions" style="margin-top:9px"><button id="exportText" class="secondary">导出到文本框</button><button id="importText" class="secondary">从文本框导入</button></div></div>
+            <div class="status"><div class="status-row"><span>关卡状态</span><strong id="statusText">等待生成</strong></div><div class="status-row"><span>区域数量</span><strong id="regionCount">—</strong></div><div class="status-row"><span>猫咪进度</span><strong id="catCount">—</strong></div><div id="notice" class="notice">先生成一张地图，或用色板编辑当前区域。</div></div>
+          </div>
+          <div id="editPanel"><h3>区域编辑</h3><div class="edit-help">选中格子后点击色板，调整它所属的颜色区域。编辑后请点击「验证当前关卡」。</div><div class="field" style="margin-top:17px"><label>当前区域颜色</label><div id="palette" class="palette"></div></div><div class="status"><div class="status-row"><span>选中格子</span><strong id="selectedCell">未选择</strong></div><div class="status-row"><span>答案猫数量</span><strong id="editCatCount">—</strong></div></div></div>
+        </section>
+      </div>
+      <div class="footer-note">规则引擎：唯一解 + 连通区域 + 八方向避邻。试玩中的普通 X 不参与答案判定。</div>
+    </main>
+  </div><div id="toast" class="toast"></div>
+  <script>
+    const COLORS=['#f4bea8','#f6d98a','#9dd7c4','#9fc7e8','#c9b9eb','#e4b6c9','#b7d79a','#f2c28f','#83c9c4','#d8c0a7'];
+    const $=id=>document.getElementById(id); let level=null, selected=-1, editColor=0, play=null, toastTimer;
+    function toast(message){let el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
+    function rand(a){return a[Math.floor(Math.random()*a.length)]} function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+    function findSolution(n){let rows=Array(n).fill(-1), cols=Array(n).fill(false); function go(r){if(r===n)return true; let opts=shuffle([...Array(n).keys()].filter(c=>!cols[c]&&(r===0||Math.abs(c-rows[r-1])>1))); for(const c of opts){rows[r]=c;cols[c]=true;if(go(r+1))return true;cols[c]=false}return false} return go(0)?rows.map((c,r)=>r*n+c):null}
+    function neighbors(p,n){let r=Math.floor(p/n),c=p%n;return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([y,x])=>y>=0&&y<n&&x>=0&&x<n).map(([y,x])=>y*n+x)}
+    /* Exact solver.  Bit masks keep the hot path allocation-free, which is
+       important when 10×10–15×15 candidates are checked repeatedly. */
+    function findSolutions(n,regions,limit=2,excludeKey=null){
+      const total=n*n, colBit=Array(total), regBit=Array(total);
+      for(let p=0;p<total;p++){let c=p%n;colBit[p]=1<<c;regBit[p]=1<<(regions[p]||0)}
+      let solutions=[],chosen=[],rowChoice=Array(n).fill(-1),rowUsed=0,colUsed=0,regUsed=0;
+      function go(){
+        if(solutions.length>=limit)return;
+        if(chosen.length===n){const key=chosen.slice().sort((a,b)=>a-b).join(',');if(key!==excludeKey)solutions.push(chosen.slice());return;}
+        let bestOpts=null;
+        for(let r=0;r<n;r++)if(!(rowUsed&(1<<r))){let opts=[];for(let c=0;c<n;c++){let p=r*n+c,g=regions[p],blocked=false;for(let y=Math.max(0,r-1);y<=Math.min(n-1,r+1);y++){let pc=rowChoice[y];if(pc>=0&&Math.abs(pc-c)<=1){blocked=true;break}}if((colUsed&colBit[p])||(regUsed&regBit[p])||blocked)continue;opts.push(p)}if(!opts.length)return;if(!bestOpts||opts.length<bestOpts.length)bestOpts=opts;}
+        for(const p of bestOpts){let r=Math.floor(p/n),c=p%n;rowUsed|=1<<r;colUsed|=colBit[p];regUsed|=regBit[p];rowChoice[r]=c;chosen.push(p);go();chosen.pop();rowChoice[r]=-1;regUsed^=regBit[p];colUsed^=colBit[p];rowUsed^=1<<r;if(solutions.length>=limit)return;}
+      }
+      go();return solutions;
+    }
+    function countSolutions(n,regions){return findSolutions(n,regions,2).length}
+    function regionSizes(regions,n){let counts=Array(n).fill(0);regions.forEach(g=>counts[g]++);return counts}
+    function singleRegionCount(regions,n){return regionSizes(regions,n).filter(x=>x===1).length}
+    function regionSpread(regions,n){let sizes=regionSizes(regions,n);return Math.max(...sizes)-Math.min(...sizes)}
+    function openingHintMax(difficulty,revealed){if(revealed||difficulty==='expert')return 0;return difficulty==='hard'?3:1}
+    function humanRegionChain(n,cats,regions,maxCandidates=2){function walk(found,rows,cols){if(found.size===n)return true;let options=[];for(let g=0;g<n;g++){if([...found].some(p=>regions[p]===g))continue;let cells=[];for(let p=0;p<n*n;p++){if(regions[p]!==g||rows.has(Math.floor(p/n))||cols.has(p%n))continue;let r=Math.floor(p/n),c=p%n,blocked=false;for(const q of found){let y=Math.floor(q/n),x=q%n;if(Math.abs(y-r)<=1&&Math.abs(x-c)<=1){blocked=true;break}}if(!blocked)cells.push(p)}if(cells.length>0&&cells.length<=maxCandidates){let answer=cells.find(p=>cats.includes(p));if(answer!=null)options.push(answer)}}for(const target of options){let nextFound=new Set(found),nextRows=new Set(rows),nextCols=new Set(cols);nextFound.add(target);nextRows.add(Math.floor(target/n));nextCols.add(target%n);if(walk(nextFound,nextRows,nextCols))return true}return false}return walk(new Set(),new Set(),new Set())}
+    function regionsAreConnected(n,regions){for(let g=0;g<n;g++){let cells=regions.map((x,i)=>x===g?i:-1).filter(x=>x>=0);if(!cells.length)return false;let seen=new Set([cells[0]]),q=[cells[0]];while(q.length){let p=q.shift();neighbors(p,n).forEach(v=>{if(regions[v]===g&&!seen.has(v)){seen.add(v);q.push(v)}})}if(seen.size!==cells.length)return false}return true}
+    function buildBalancedRegions(n,cats,difficulty,hintMax){let regions=Array(n*n).fill(-1),sizes=Array(n).fill(1),front=Array.from({length:n},()=>[]);cats.forEach((p,g)=>{regions[p]=g;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})});let hintGroup=hintMax?rand([...Array(n).keys()]):-1,remaining=n*n-n;while(remaining){let active=front.map((cells,g)=>cells.some(p=>regions[p]<0)?g:-1).filter(g=>g>=0);if(!active.length)return null;if(hintGroup>=0&&sizes[hintGroup]>=hintMax){let other=active.filter(g=>g!==hintGroup);if(other.length)active=other}let smallest=Math.min(...active.map(g=>sizes[g])),pool=active.filter(g=>sizes[g]===smallest);if(difficulty==='hard')pool=active.filter(g=>sizes[g]<=smallest+1);let g=rand(pool),candidates=shuffle(front[g].filter(p=>regions[p]<0));if(!candidates.length)continue;let p=candidates[0];regions[p]=g;sizes[g]++;remaining--;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})}return regions}
+    function buildRandomRegions(n,forceSmall){
+      const regions=Array(n*n).fill(-1),sizes=Array(n).fill(1),front=Array.from({length:n},()=>[]);
+      const seeds=shuffle([...Array(n*n).keys()]).slice(0,n);
+      const locked=forceSmall?rand([...Array(n).keys()]):-1;
+      seeds.forEach((p,g)=>{regions[p]=g;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})});
+      let remaining=n*n-n;
+      while(remaining>0){
+        const active=front.map((cells,g)=>g===locked?-1:(cells.some(p=>regions[p]<0)?g:-1)).filter(g=>g>=0);
+        if(!active.length)return null;
+        const min=Math.min(...active.map(g=>sizes[g]));
+        const g=rand(active.filter(x=>sizes[x]<=min+1));
+        const cells=shuffle(front[g].filter(p=>regions[p]<0));
+        if(!cells.length)continue;
+        const p=cells[0];regions[p]=g;sizes[g]++;remaining--;
+        neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)});
+      }
+      return regions;
+    }
+    function seedTargetRegions(n,cats,hintMax){
+      const regions=Array(n*n).fill(-1),sizes=Array(n).fill(1),front=Array.from({length:n},()=>[]);
+      const locked=hintMax?rand([...Array(n).keys()]):-1;
+      cats.forEach((p,g)=>{regions[p]=g;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})});
+      let remaining=n*n-n;
+      while(remaining){
+        let active=front.map((cells,g)=>g===locked?-1:(cells.some(p=>regions[p]<0)?g:-1)).filter(g=>g>=0);
+        if(!active.length)return null;
+        const min=Math.min(...active.map(g=>sizes[g]));
+        const g=rand(active.filter(x=>sizes[x]<=min+1));
+        const candidates=shuffle(front[g].filter(p=>regions[p]<0));if(!candidates.length)continue;
+        const p=candidates[0];regions[p]=g;sizes[g]++;remaining--;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)});
+      }
+      return regions;
+    }
+    /*
+      Unique-solution repair is deliberately counterexample driven.
+      Given the solver's second answer, move one of its non-target cells into
+      a region already occupied by another cell of that same answer.  That
+      creates an immediate duplicate-region conflict for the counterexample,
+      while the target answer remains valid because target cat cells are never
+      moved.  Every mutation is rolled back unless all regions stay connected
+      and the exact solver still finds the target answer.
+    */
+    function repairUnique(n,cats,regions){
+      const targetSet=new Set(cats);
+      const targetKey=cats.slice().sort((a,b)=>a-b).join(',');
+      const sameAnswer=(sol)=>sol&&sol.length===n&&sol.slice().sort((a,b)=>a-b).join(',')===targetKey;
+      const deadline=Date.now()+Math.max(1200, n>=10?8500:1800);
+      for(let round=0;round<Math.min(180, n*n*2);round++){
+        if(Date.now()>deadline) return null;
+        const altList=findSolutions(n,regions,1,targetKey);
+        if(!altList.length) return regions;
+        const alt=altList[0];
+        const targetGroups=cats.map(p=>regions[p]);
+        const candidates=shuffle(alt.filter(p=>!targetSet.has(p)));
+        let changed=false;
+        for(const p of candidates){
+          const old=regions[p];
+          const oldSize=regionSizes(regions,n)[old];
+          if(oldSize<=1) continue;
+          const adjacentGroups=[...new Set(neighbors(p,n).filter(v=>regions[v]!==old).map(v=>regions[v]))];
+          const preferred=shuffle(targetGroups.filter(g=>g!==old&&adjacentGroups.includes(g)));
+          const fallback=shuffle([...Array(n).keys()].filter(g=>g!==old&&!adjacentGroups.includes(g)));
+          const targets=preferred.concat(fallback);
+          for(const g of targets){
+            if(g===old) continue;
+            regions[p]=g;
+            const sizes=regionSizes(regions,n);
+            const validShape=sizes[g]>0&&sizes[old]>0&&regionsAreConnected(n,regions);
+            if(validShape){
+              const next=findSolutions(n,regions,2);
+              if(next.length===1&&sameAnswer(next[0])) return regions;
+              if(next.length===2){changed=true;break;}
+            }
+            regions[p]=old;
+          }
+          if(changed) break;
+          regions[p]=old;
+        }
+        if(!changed) return null;
+      }
+      return null;
+    }
+    function buildRegions(n,cats,difficulty,hintMax){
+      const large=n>=8;
+      /* On large boards area balance is a soft presentation constraint; keep
+         enough headroom for the uniqueness repair to reshape boundaries. */
+      const maxSpread=hintMax?(large?Math.max(n+4,Math.ceil(n*.95)):Math.max(n+1,Math.ceil(n*.2))):(large?Math.max(n+4,Math.ceil(n*.95)):(n>=6?n:Math.max(2,Math.ceil(n*.2))));
+      const needChain=hintMax>0;
+      const chainCap=hintMax===3?3:(large?(n>=13?10:(n>=11?8:6)):(n>=6?3:2));
+      const tries=n<=7?300:n<=10?70:n<=12?55:40;
+      for(let i=0;i<tries;i++){
+        /* Generate the jigsaw first, then let the exact solver choose the
+           answer. This removes the bias caused by growing every region from
+           a preselected cat position. */
+        let regions;
+        /* For normal sized maps random region seeds give better diversity.
+           Large maps use a planted valid answer as a stable scaffold; repair
+           then removes every competing answer without weakening uniqueness. */
+        let planted=null;
+        if(n>=6){planted=findSolution(n);regions=seedTargetRegions(n,planted,hintMax)}else regions=buildRandomRegions(n,hintMax>0);
+        let sizes=regions&&regionSizes(regions,n);
+        /* Initial construction is intentionally allowed a little more area
+           variation. Repairing a counterexample can only worsen spread, so
+           applying the final visual cap too early discarded viable boards. */
+        let initialSpread=large?maxSpread+Math.max(2,Math.ceil(n*.25)):maxSpread+2;
+        let baseOk=regions&&singleRegionCount(regions,n)<=1&&(!hintMax||sizes.some(x=>x>=1&&x<=hintMax))&&regionSpread(regions,n)<=initialSpread;
+        if(!baseOk||!regionsAreConnected(n,regions))continue;
+        let sols=findSolutions(n,regions,2); if(!sols.length)continue;
+        let cats=planted||sols[0];
+        /* The planted answer is guaranteed legal for the seed layout, and
+           using it as the repair target prevents the solver's arbitrary
+           first answer from fighting the intended construction. */
+        if(needChain&&!humanRegionChain(n,cats,regions,chainCap))continue;
+        let repaired=repairUnique(n,cats,regions);
+        if(repaired&&regionSpread(repaired,n)<=maxSpread&&(!hintMax||regionSizes(repaired,n).some(x=>x>=1&&x<=hintMax))&&(!needChain||humanRegionChain(n,cats,repaired,chainCap)))return {regions:repaired,cats,verified:true};
+      }
+      return null;
+    }
+    function generate(){let n=Number.parseInt($('size').value,10),difficulty=$('difficulty').value,revealed=$('reveal').checked;if(!Number.isInteger(n)||n<4||n>15){setStatus('地图大小需为 4 - 15','');toast('请输入 4 到 15 的整数');return}$('size').value=n;let cats=null,built=null,hintMax=openingHintMax(difficulty,revealed);for(let i=0;i<3&&!built;i++){built=buildRegions(n,null,difficulty,hintMax);if(built)cats=built.cats}if(!built){setStatus('生成失败 · 请重试','');toast('本次未找到同时满足唯一解和连续线索的关卡，请点击生成新关卡重试');return}let reveal=revealed?rand(cats):null;level={size:n,cats:cats,regions:built.regions,revealed:reveal,difficulty:difficulty,verified:true};play=null;selected=-1;render();setStatus('唯一解已验证','ok');toast('新关卡已生成并通过全部规则验证');}
+    function regionCounts(){let n=level.size,c=Array(n).fill(0);level.regions.forEach(x=>c[x]++);return c}
+    function render(){if(!level)return;let n=level.size; $('board').style.gridTemplateColumns=`repeat(${n},1fr)`; $('board').innerHTML=''; level.regions.forEach((g,i)=>{let cell=document.createElement('button');cell.className='cell';cell.style.background=COLORS[g%COLORS.length];cell.dataset.i=i; if(i===selected)cell.classList.add('selected'); let cat=level.cats.includes(i); if(play){if(play.found.has(i)||i===level.revealed){cell.innerHTML='<span class="cat">🐱</span>';cell.classList.add('locked')}else if(play.errors.has(i)){cell.innerHTML='<span class="mark error">✕</span>';cell.classList.add('locked')}else if(play.notes.has(i))cell.innerHTML='<span class="mark note">×</span>'} else if(level.revealed===i)cell.innerHTML='<span class="cat">🐱</span>'; cell.addEventListener('click',()=>onCell(i));cell.addEventListener('dblclick',e=>{e.preventDefault();onDouble(i)});$('board').appendChild(cell)}); $('boardTitle').textContent=play?'试玩模式':'关卡画布';$('boardSub').textContent=play?'单击标记普通 X · 双击确认猫的位置':'点击格子选择区域 · 颜色从种子猫开始生长';$('playbar').classList.toggle('hidden',!play);if(play){let found=play.found.size+(level.revealed!=null?1:0);$('progress').textContent=`已找到 ${found} / ${n}`;$('lives').textContent='♥ '.repeat(play.lives).trim()||'无生命';} $('regionCount').textContent=n+' 个';$('catCount').textContent=(level.revealed!=null?1:0)+' / '+n; $('editCatCount').textContent=n+' 只'; $('selectedCell').textContent=selected>=0?`第 ${Math.floor(selected/n)+1} 行 · 第 ${selected%n+1} 列`:'未选择'; renderPalette();}
+    function onCell(i){if(!level)return;if(play){if(play.found.has(i)||play.errors.has(i)||i===level.revealed)return;play.notes.has(i)?play.notes.delete(i):play.notes.add(i);render();return} selected=i;render()}
+    function onDouble(i){if(!play||play.found.has(i)||play.errors.has(i)||i===level.revealed)return;if(level.cats.includes(i)){play.found.add(i);toast('找对了，这里有一只猫 🐾');}else{play.errors.add(i);play.lives--;toast(play.lives?'这里没有猫，扣除 1 格生命':'生命耗尽，可观看广告恢复');}render();if(play.found.size+(level.revealed!=null?1:0)>=level.size)toast('关卡完成！所有猫咪都找到了 🎉');}
+    function renderPalette(){let p=$('palette');if(!p)return;p.innerHTML='';for(let i=0;i<level.size;i++){let b=document.createElement('button');b.className='swatch'+(editColor===i?' active':'');b.style.background=COLORS[i%COLORS.length];b.title='区域 '+(i+1);b.addEventListener('click',()=>{editColor=i;if(selected>=0&&!play){level.regions[selected]=i;render();}});p.appendChild(b)}}
+    function regionsConnected(){return regionsAreConnected(level.size,level.regions)}
+    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?Math.max(n+2,Math.ceil(n*.7)):Math.max(n+1,Math.ceil(n*.2))):(large?Math.max(n+2,Math.ceil(n*.7)):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?6:4):2)),validCounts=counts.length===n&&counts.every(x=>x>0),sols=validCounts&&connected?findSolutions(n,level.regions,2):[],answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey,unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在不连通的同色区域':validCounts?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
+    function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
+    function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
+    function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
+    function levelPayload(){return {size:level.size,regions:level.regions.slice(),cats:level.cats.slice(),revealed:level.revealed??null,difficulty:level.difficulty||'normal'}}
+    function exportJSON(){
+      if(!level){toast('请先生成关卡');return}
+      const blob=new Blob([JSON.stringify(levelPayload(),null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=`meowdoku-${level.size}x${level.size}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('关卡 JSON 已导出');
+    }
+    function validateImported(data){
+      if(!data||typeof data!=='object')return [false,'JSON 格式无效'];
+      const n=Number(data.size);
+      if(!Number.isInteger(n)||n<4||n>15)return [false,'地图大小需为 4 - 15'];
+      if(!Array.isArray(data.regions)||data.regions.length!==n*n)return [false,'regions 数量必须等于地图格数'];
+      if(!data.regions.every(x=>Number.isInteger(x)&&x>=0&&x<n))return [false,'regions 必须是 0 到 N-1 的整数'];
+      const counts=Array(n).fill(0);data.regions.forEach(x=>counts[x]++);
+      if(counts.some(x=>x===0))return [false,'每种颜色都必须至少有一个格子'];
+      if(singleRegionCount(data.regions,n)>1)return [false,'单格颜色区域最多只能有 1 个'];
+      if(!regionsAreConnected(n,data.regions))return [false,'存在不连通的同色区域'];
+      if(!Array.isArray(data.cats)||data.cats.length!==n||new Set(data.cats).size!==n||!data.cats.every(p=>Number.isInteger(p)&&p>=0&&p<n*n))return [false,'cats 必须包含 N 个有效且不重复的格子'];
+      const rowSet=new Set(),colSet=new Set();for(const p of data.cats){const r=Math.floor(p/n),c=p%n;if(rowSet.has(r)||colSet.has(c))return [false,'cats 不能出现在同一行或同一列'];rowSet.add(r);colSet.add(c);}
+      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=data.cats[i],b=data.cats[j],ar=Math.floor(a/n),ac=a%n,br=Math.floor(b/n),bc=b%n;if(Math.abs(ar-br)<=1&&Math.abs(ac-bc)<=1)return [false,'cats 不能八方向相邻'];}
+      const catRegions=new Set(data.cats.map(p=>data.regions[p]));if(catRegions.size!==n)return [false,'cats 必须覆盖每一种颜色区域'];
+      const sols=findSolutions(n,data.regions,2),key=data.cats.slice().sort((a,b)=>a-b).join(',');
+      if(sols.length!==1||sols[0].slice().sort((a,b)=>a-b).join(',')!==key)return [false,sols.length===0?'当前区域无解':'当前区域不是唯一解'];
+      const reveal=data.revealed==null?null:Number(data.revealed);if(reveal!=null&&(!data.cats.includes(reveal)))return [false,'revealed 必须是 cats 中的格子'];
+      return [true,'ok'];
+    }
+    function applyImportedData(data){
+      const check=validateImported(data);if(!check[0]){toast('导入失败：'+check[1]);return false}
+      level={size:Number(data.size),regions:data.regions.slice(),cats:data.cats.slice(),revealed:data.revealed==null?null:Number(data.revealed),difficulty:['easy','normal','hard','expert'].includes(data.difficulty)?data.difficulty:'normal',verified:true};
+      play=null;selected=-1;$('size').value=level.size;$('difficulty').value=level.difficulty;$('reveal').checked=level.revealed!=null;render();setStatus('唯一解已验证','ok');toast('关卡 JSON 导入成功');return true;
+    }
+    function importJSONString(raw){
+      const value=String(raw||'').trim();if(!value){toast('请先输入 JSON 字符串');return false}
+      try{return applyImportedData(JSON.parse(value))}catch(e){toast('导入失败：JSON 无法解析');return false}
+    }
+    function importJSONFile(file){const reader=new FileReader();reader.onload=()=>importJSONString(reader.result);reader.readAsText(file)}
+    function exportText(){if(!level){toast('请先生成关卡');return}$('jsonText').value=JSON.stringify(levelPayload(),null,2);$('jsonText').focus();toast('关卡 JSON 已写入文本框')}
+    function importText(){importJSONString($('jsonText').value)}
+    $('generate').addEventListener('click',generate);$('validate').addEventListener('click',validate);$('copy').addEventListener('click',copyJSON);$('export').addEventListener('click',exportJSON);$('import').addEventListener('click',()=>$('importFile').click());$('importFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)importJSONFile(f);e.target.value=''});$('exportText').addEventListener('click',exportText);$('importText').addEventListener('click',importText);$('modeBtn').addEventListener('click',enterPlay);generate();
+  </script>
+</body>
+</html>
