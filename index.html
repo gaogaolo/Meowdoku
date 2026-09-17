@@ -38,6 +38,7 @@
         </section>
         <section class="panel">
           <div id="configPanel"><h3>关卡配置</h3>
+            <div class="field"><label>关卡 ID <span>用于区分每一关的 JSON 配置</span></label><input id="levelId" class="number-input" type="number" min="1" step="1" value="1" inputmode="numeric"><div class="hint">导出时会写入 JSON 的 <code>Id</code> 字段。</div></div>
             <div class="field"><label>地图大小 <span>4 - 15 格</span></label><input id="size" class="number-input" type="number" min="4" max="15" value="7" inputmode="numeric"><div class="hint">地图为 N × N，固定生成 N 只猫和 N 个颜色区域。</div></div>
             <div class="field"><label>难度选择 <span>影响区域形状与推理链</span></label><select id="difficulty" class="select"><option value="easy">轻松 · Easy</option><option value="normal" selected>标准 · Normal</option><option value="hard">进阶 · Hard</option><option value="expert">挑战 · Expert</option></select></div>
             <div class="field"><div class="switch-line"><div><strong>开局显示一只猫</strong><div class="hint">直接计入已找到，无需双击</div></div><label class="switch"><input id="reveal" type="checkbox"><span class="slider"></span></label></div></div>
@@ -199,7 +200,7 @@
       }
       return null;
     }
-    function generate(){let n=Number.parseInt($('size').value,10),difficulty=$('difficulty').value,revealed=$('reveal').checked;if(!Number.isInteger(n)||n<4||n>15){setStatus('地图大小需为 4 - 15','');toast('请输入 4 到 15 的整数');return}$('size').value=n;let cats=null,built=null,hintMax=openingHintMax(difficulty,revealed);for(let i=0;i<3&&!built;i++){built=buildRegions(n,null,difficulty,hintMax);if(built)cats=built.cats}if(!built){setStatus('生成失败 · 请重试','');toast('本次未找到同时满足唯一解和连续线索的关卡，请点击生成新关卡重试');return}let reveal=revealed?rand(cats):null;level={size:n,cats:cats,regions:built.regions,revealed:reveal,difficulty:difficulty,verified:true};play=null;selected=-1;render();setStatus('唯一解已验证','ok');toast('新关卡已生成并通过全部规则验证');}
+    function generate(){let id=Number.parseInt($('levelId').value,10),n=Number.parseInt($('size').value,10),difficulty=$('difficulty').value,revealed=$('reveal').checked;if(!Number.isInteger(id)||id<1){toast('关卡 ID 需为大于 0 的整数');return}if(!Number.isInteger(n)||n<4||n>15){setStatus('地图大小需为 4 - 15','');toast('请输入 4 到 15 的整数');return}$('levelId').value=id;$('size').value=n;let cats=null,built=null,hintMax=openingHintMax(difficulty,revealed);for(let i=0;i<3&&!built;i++){built=buildRegions(n,null,difficulty,hintMax);if(built)cats=built.cats}if(!built){setStatus('生成失败 · 请重试','');toast('本次未找到同时满足唯一解和连续线索的关卡，请点击生成新关卡重试');return}let reveal=revealed?rand(cats):null;level={id:id,size:n,cats:cats,regions:built.regions,revealed:reveal,difficulty:difficulty,verified:true};play=null;selected=-1;render();setStatus('唯一解已验证','ok');toast('新关卡已生成并通过全部规则验证');}
     function regionCounts(){let n=level.size,c=Array(n).fill(0);level.regions.forEach(x=>c[x]++);return c}
     function render(){if(!level)return;let n=level.size; $('board').style.gridTemplateColumns=`repeat(${n},1fr)`; $('board').innerHTML=''; level.regions.forEach((g,i)=>{let cell=document.createElement('button');cell.className='cell';cell.style.background=COLORS[g%COLORS.length];cell.dataset.i=i; if(i===selected)cell.classList.add('selected'); let cat=level.cats.includes(i); if(play){if(play.found.has(i)||i===level.revealed){cell.innerHTML='<span class="cat">🐱</span>';cell.classList.add('locked')}else if(play.errors.has(i)){cell.innerHTML='<span class="mark error">✕</span>';cell.classList.add('locked')}else if(play.notes.has(i))cell.innerHTML='<span class="mark note">×</span>'} else if(level.revealed===i)cell.innerHTML='<span class="cat">🐱</span>'; cell.addEventListener('click',()=>onCell(i));cell.addEventListener('dblclick',e=>{e.preventDefault();onDouble(i)});$('board').appendChild(cell)}); $('boardTitle').textContent=play?'试玩模式':'关卡画布';$('boardSub').textContent=play?'单击标记普通 X · 双击确认猫的位置':'点击格子选择区域 · 颜色从种子猫开始生长';$('playbar').classList.toggle('hidden',!play);if(play){let found=play.found.size+(level.revealed!=null?1:0);$('progress').textContent=`已找到 ${found} / ${n}`;$('lives').textContent='♥ '.repeat(play.lives).trim()||'无生命';} $('regionCount').textContent=n+' 个';$('catCount').textContent=(level.revealed!=null?1:0)+' / '+n; $('editCatCount').textContent=n+' 只'; $('selectedCell').textContent=selected>=0?`第 ${Math.floor(selected/n)+1} 行 · 第 ${selected%n+1} 列`:'未选择'; renderPalette();}
     function onCell(i){if(!level)return;if(play){if(play.found.has(i)||play.errors.has(i)||i===level.revealed)return;play.notes.has(i)?play.notes.delete(i):play.notes.add(i);render();return} selected=i;render()}
@@ -210,15 +211,17 @@
     function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
     function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
     function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
-    function levelPayload(){return {size:level.size,regions:level.regions.slice(),cats:level.cats.slice(),revealed:level.revealed??null,difficulty:level.difficulty||'normal'}}
+    function levelPayload(){return {Id:level.id,size:level.size,regions:level.regions.slice(),cats:level.cats.slice(),revealed:level.revealed??null,difficulty:level.difficulty||'normal'}}
     function exportJSON(){
       if(!level){toast('请先生成关卡');return}
       const blob=new Blob([JSON.stringify(levelPayload(),null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');
-      a.href=url;a.download=`meowdoku-${level.size}x${level.size}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('关卡 JSON 已导出');
+      a.href=url;a.download=`meowdoku-level-${level.id}-${level.size}x${level.size}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('关卡 JSON 已导出');
     }
     function validateImported(data){
       if(!data||typeof data!=='object')return [false,'JSON 格式无效'];
+      const id=Number(data.Id??data.id??1);
+      if(!Number.isInteger(id)||id<1)return [false,'Id 必须是大于 0 的整数'];
       const n=Number(data.size);
       if(!Number.isInteger(n)||n<4||n>15)return [false,'地图大小需为 4 - 15'];
       if(!Array.isArray(data.regions)||data.regions.length!==n*n)return [false,'regions 数量必须等于地图格数'];
@@ -238,8 +241,8 @@
     }
     function applyImportedData(data){
       const check=validateImported(data);if(!check[0]){toast('导入失败：'+check[1]);return false}
-      level={size:Number(data.size),regions:data.regions.slice(),cats:data.cats.slice(),revealed:data.revealed==null?null:Number(data.revealed),difficulty:['easy','normal','hard','expert'].includes(data.difficulty)?data.difficulty:'normal',verified:true};
-      play=null;selected=-1;$('size').value=level.size;$('difficulty').value=level.difficulty;$('reveal').checked=level.revealed!=null;render();setStatus('唯一解已验证','ok');toast('关卡 JSON 导入成功');return true;
+      level={id:Number(data.Id??data.id??1),size:Number(data.size),regions:data.regions.slice(),cats:data.cats.slice(),revealed:data.revealed==null?null:Number(data.revealed),difficulty:['easy','normal','hard','expert'].includes(data.difficulty)?data.difficulty:'normal',verified:true};
+      play=null;selected=-1;$('levelId').value=level.id;$('size').value=level.size;$('difficulty').value=level.difficulty;$('reveal').checked=level.revealed!=null;render();setStatus('唯一解已验证','ok');toast('关卡 JSON 导入成功');return true;
     }
     function importJSONString(raw){
       const value=String(raw||'').trim();if(!value){toast('请先输入 JSON 字符串');return false}
