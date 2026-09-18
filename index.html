@@ -53,7 +53,8 @@
     </main>
   </div><div id="toast" class="toast"></div>
   <script>
-    const COLORS=['#f4bea8','#f6d98a','#9dd7c4','#9fc7e8','#c9b9eb','#e4b6c9','#b7d79a','#f2c28f','#83c9c4','#d8c0a7'];
+    /* One distinct pastel per supported colour region (4–15 boards). */
+    const COLORS=['#f4bea8','#f6d98a','#9dd7c4','#9fc7e8','#c9b9eb','#e4b6c9','#b7d79a','#f2c28f','#83c9c4','#d8c0a7','#e89b9b','#b8b0e8','#b7d8b0','#f0b47d','#91b8d8'];
     const $=id=>document.getElementById(id); let level=null, selected=-1, editColor=0, play=null, toastTimer;
     function toast(message){let el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
     function rand(a){return a[Math.floor(Math.random()*a.length)]} function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
@@ -176,6 +177,24 @@
       }
       return regions;
     }
+    /* Inductive exact certificate for the chained layout. After animals
+       0..k-1 are fixed, every non-target cell of region k is already invalid;
+       hence region k has exactly one legal candidate. */
+    function verifyChainedUnique(n,cats,regions){
+      const found=[],rows=new Set(),cols=new Set();
+      for(let k=0;k<n;k++){
+        const target=cats[k],g=regions[target],candidates=[];
+        for(let p=0;p<n*n;p++){
+          if(regions[p]!==g||rows.has(Math.floor(p/n))||cols.has(p%n))continue;
+          const r=Math.floor(p/n),c=p%n;let blocked=false;
+          for(const q of found){const y=Math.floor(q/n),x=q%n;if(Math.abs(y-r)<=1&&Math.abs(x-c)<=1){blocked=true;break}}
+          if(!blocked)candidates.push(p);
+        }
+        if(candidates.length!==1||candidates[0]!==target)return false;
+        found.push(target);rows.add(Math.floor(target/n));cols.add(target%n);
+      }
+      return true;
+    }
     /*
       Unique-solution repair is deliberately counterexample driven.
       Given the solver's second answer, move one of its non-target cells into
@@ -244,8 +263,11 @@
         for(let attempt=0;attempt<40;attempt++){
           const planted=findSolution(n),regions=planted&&buildChainedRegions(n,planted);
           if(!regions||regionSpread(regions,n)>maxSpread||!humanRegionChain(n,planted,regions,chainCap))continue;
-          const sols=findSolutions(n,regions,2),key=planted.slice().sort((a,b)=>a-b).join(',');
-          if(sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===key)return {regions,cats:planted,verified:true};
+          /* The generic exact solver is still used on 10–12. For 13–15 its
+             backtracking tree is needlessly huge even though this layout has
+             a direct induction certificate. */
+          const unique=n>=13?verifyChainedUnique(n,planted,regions):(()=>{const sols=findSolutions(n,regions,2),key=planted.slice().sort((a,b)=>a-b).join(',');return sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===key})();
+          if(unique)return {regions,cats:planted,verified:true,certificate:n>=13};
         }
         /* Do not fall through to the older repair search here: a rare failed
            constructive batch should be retried immediately, never turn into
@@ -281,14 +303,14 @@
       }
       return null;
     }
-    function generate(){let id=Number.parseInt($('levelId').value,10),n=Number.parseInt($('size').value,10),difficulty=$('difficulty').value,revealed=$('reveal').checked;if(!Number.isInteger(id)||id<1){toast('关卡 ID 需为大于 0 的整数');return}if(!Number.isInteger(n)||n<4||n>15){setStatus('地图大小需为 4 - 15','');toast('请输入 4 到 15 的整数');return}$('levelId').value=id;$('size').value=n;let cats=null,built=null,hintMax=openingHintMax(difficulty,revealed);for(let i=0;i<3&&!built;i++){built=buildRegions(n,null,difficulty,hintMax);if(built)cats=built.cats}if(!built){setStatus('生成失败 · 请重试','');toast('本次未找到同时满足唯一解和连续线索的关卡，请点击生成新关卡重试');return}let reveal=revealed?rand(cats):null;level={id:id,size:n,cats:cats,regions:built.regions,revealed:reveal,difficulty:difficulty,verified:true};play=null;selected=-1;render();setStatus('唯一解已验证','ok');toast('新关卡已生成并通过全部规则验证');}
+    function generate(){let id=Number.parseInt($('levelId').value,10),n=Number.parseInt($('size').value,10),difficulty=$('difficulty').value,revealed=$('reveal').checked;if(!Number.isInteger(id)||id<1){toast('关卡 ID 需为大于 0 的整数');return}if(!Number.isInteger(n)||n<4||n>15){setStatus('地图大小需为 4 - 15','');toast('请输入 4 到 15 的整数');return}$('levelId').value=id;$('size').value=n;let cats=null,built=null,hintMax=openingHintMax(difficulty,revealed);for(let i=0;i<3&&!built;i++){built=buildRegions(n,null,difficulty,hintMax);if(built)cats=built.cats}if(!built){setStatus('生成失败 · 请重试','');toast('本次未找到同时满足唯一解和连续线索的关卡，请点击生成新关卡重试');return}let reveal=revealed?rand(cats):null;level={id:id,size:n,cats:cats,regions:built.regions,revealed:reveal,difficulty:difficulty,verified:true,certificate:!!built.certificate};play=null;selected=-1;render();setStatus('唯一解已验证','ok');toast('新关卡已生成并通过全部规则验证');}
     function regionCounts(){let n=level.size,c=Array(n).fill(0);level.regions.forEach(x=>c[x]++);return c}
-    function render(){if(!level)return;let n=level.size; $('board').style.gridTemplateColumns=`repeat(${n},1fr)`; $('board').innerHTML=''; level.regions.forEach((g,i)=>{let cell=document.createElement('button');cell.className='cell';cell.style.background=COLORS[g%COLORS.length];cell.dataset.i=i; if(i===selected)cell.classList.add('selected'); let cat=level.cats.includes(i); if(play){if(play.found.has(i)||i===level.revealed){cell.innerHTML='<span class="cat">🐱</span>';cell.classList.add('locked')}else if(play.errors.has(i)){cell.innerHTML='<span class="mark error">✕</span>';cell.classList.add('locked')}else if(play.notes.has(i))cell.innerHTML='<span class="mark note">×</span>'} else if(level.revealed===i)cell.innerHTML='<span class="cat">🐱</span>'; cell.addEventListener('click',()=>onCell(i));cell.addEventListener('dblclick',e=>{e.preventDefault();onDouble(i)});$('board').appendChild(cell)}); $('boardTitle').textContent=play?'试玩模式':'关卡画布';$('boardSub').textContent=play?'单击标记普通 X · 双击确认猫的位置':'点击格子选择区域 · 颜色从种子猫开始生长';$('playbar').classList.toggle('hidden',!play);if(play){let found=play.found.size+(level.revealed!=null?1:0);$('progress').textContent=`已找到 ${found} / ${n}`;$('lives').textContent='♥ '.repeat(play.lives).trim()||'无生命';} $('regionCount').textContent=n+' 个';$('catCount').textContent=(level.revealed!=null?1:0)+' / '+n; $('editCatCount').textContent=n+' 只'; $('selectedCell').textContent=selected>=0?`第 ${Math.floor(selected/n)+1} 行 · 第 ${selected%n+1} 列`:'未选择'; renderPalette();}
+    function render(){if(!level)return;let n=level.size; $('board').style.gridTemplateColumns=`repeat(${n},1fr)`; $('board').innerHTML=''; level.regions.forEach((g,i)=>{let cell=document.createElement('button');cell.className='cell';cell.style.background=COLORS[g];cell.dataset.i=i; if(i===selected)cell.classList.add('selected'); let cat=level.cats.includes(i); if(play){if(play.found.has(i)||i===level.revealed){cell.innerHTML='<span class="cat">🐱</span>';cell.classList.add('locked')}else if(play.errors.has(i)){cell.innerHTML='<span class="mark error">✕</span>';cell.classList.add('locked')}else if(play.notes.has(i))cell.innerHTML='<span class="mark note">×</span>'} else if(level.revealed===i)cell.innerHTML='<span class="cat">🐱</span>'; cell.addEventListener('click',()=>onCell(i));cell.addEventListener('dblclick',e=>{e.preventDefault();onDouble(i)});$('board').appendChild(cell)}); $('boardTitle').textContent=play?'试玩模式':'关卡画布';$('boardSub').textContent=play?'单击标记普通 X · 双击确认猫的位置':'点击格子选择区域 · 颜色从种子猫开始生长';$('playbar').classList.toggle('hidden',!play);if(play){let found=play.found.size+(level.revealed!=null?1:0);$('progress').textContent=`已找到 ${found} / ${n}`;$('lives').textContent='♥ '.repeat(play.lives).trim()||'无生命';} $('regionCount').textContent=n+' 个';$('catCount').textContent=(level.revealed!=null?1:0)+' / '+n; $('editCatCount').textContent=n+' 只'; $('selectedCell').textContent=selected>=0?`第 ${Math.floor(selected/n)+1} 行 · 第 ${selected%n+1} 列`:'未选择'; renderPalette();}
     function onCell(i){if(!level)return;if(play){if(play.found.has(i)||play.errors.has(i)||i===level.revealed)return;play.notes.has(i)?play.notes.delete(i):play.notes.add(i);render();return} selected=i;render()}
     function onDouble(i){if(!play||play.found.has(i)||play.errors.has(i)||i===level.revealed)return;if(level.cats.includes(i)){play.found.add(i);toast('找对了，这里有一只猫 🐾');}else{play.errors.add(i);play.lives--;toast(play.lives?'这里没有猫，扣除 1 格生命':'生命耗尽，可观看广告恢复');}render();if(play.found.size+(level.revealed!=null?1:0)>=level.size)toast('关卡完成！所有猫咪都找到了 🎉');}
-    function renderPalette(){let p=$('palette');if(!p)return;p.innerHTML='';for(let i=0;i<level.size;i++){let b=document.createElement('button');b.className='swatch'+(editColor===i?' active':'');b.style.background=COLORS[i%COLORS.length];b.title='区域 '+(i+1);b.addEventListener('click',()=>{editColor=i;if(selected>=0&&!play){level.regions[selected]=i;render();}});p.appendChild(b)}}
+    function renderPalette(){let p=$('palette');if(!p)return;p.innerHTML='';for(let i=0;i<level.size;i++){let b=document.createElement('button');b.className='swatch'+(editColor===i?' active':'');b.style.background=COLORS[i];b.title='区域 '+(i+1);b.addEventListener('click',()=>{editColor=i;if(selected>=0&&!play){level.regions[selected]=i;level.certificate=false;render();}});p.appendChild(b)}}
     function regionsConnected(){return regionsAreConnected(level.size,level.regions)}
-    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?10:(n>=11?8:6)):2)),validCounts=counts.length===n&&counts.every(x=>x>0),sols=validCounts&&connected?findSolutions(n,level.regions,2):[],answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey,unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
+    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?10:(n>=11?8:6)):2)),validCounts=counts.length===n&&counts.every(x=>x>0),certified=validCounts&&connected&&level.certificate&&n>=13&&verifyChainedUnique(n,level.cats,level.regions),sols=certified?[]:(validCounts&&connected?findSolutions(n,level.regions,2):[]),answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=certified||(sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey),unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在不连通的同色区域':validCounts?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
     function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
     function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
     function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
@@ -323,7 +345,7 @@
     function applyImportedData(data){
       const check=validateImported(data);if(!check[0]){toast('导入失败：'+check[1]);return false}
       const regions=data.Regions??data.regions,animals=data.Animals??data.animals??data.Cats??data.cats,revealed=data.Revealed??data.revealed,difficulty=data.Difficulty??data.difficulty;
-      level={id:Number(data.Id??data.id??1),size:Number(data.Size??data.size),regions:regions.slice(),cats:animals.slice(),revealed:revealed==null?null:Number(revealed),difficulty:['easy','normal','hard','expert'].includes(difficulty)?difficulty:'normal',verified:true};
+      level={id:Number(data.Id??data.id??1),size:Number(data.Size??data.size),regions:regions.slice(),cats:animals.slice(),revealed:revealed==null?null:Number(revealed),difficulty:['easy','normal','hard','expert'].includes(difficulty)?difficulty:'normal',verified:true,certificate:false};
       play=null;selected=-1;$('levelId').value=level.id;$('size').value=level.size;$('difficulty').value=level.difficulty;$('reveal').checked=level.revealed!=null;render();setStatus('唯一解已验证','ok');toast('关卡 JSON 导入成功');return true;
     }
     function importJSONString(raw){
