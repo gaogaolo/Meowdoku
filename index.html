@@ -79,7 +79,32 @@
     function singleRegionCount(regions,n){return regionSizes(regions,n).filter(x=>x===1).length}
     function regionSpread(regions,n){let sizes=regionSizes(regions,n);return Math.max(...sizes)-Math.min(...sizes)}
     function openingHintMax(difficulty,revealed){if(revealed||difficulty==='expert')return 0;return difficulty==='hard'?3:1}
-    function humanRegionChain(n,cats,regions,maxCandidates=2){function walk(found,rows,cols){if(found.size===n)return true;let options=[];for(let g=0;g<n;g++){if([...found].some(p=>regions[p]===g))continue;let cells=[];for(let p=0;p<n*n;p++){if(regions[p]!==g||rows.has(Math.floor(p/n))||cols.has(p%n))continue;let r=Math.floor(p/n),c=p%n,blocked=false;for(const q of found){let y=Math.floor(q/n),x=q%n;if(Math.abs(y-r)<=1&&Math.abs(x-c)<=1){blocked=true;break}}if(!blocked)cells.push(p)}if(cells.length>0&&cells.length<=maxCandidates){let answer=cells.find(p=>cats.includes(p));if(answer!=null)options.push(answer)}}for(const target of options){let nextFound=new Set(found),nextRows=new Set(rows),nextCols=new Set(cols);nextFound.add(target);nextRows.add(Math.floor(target/n));nextCols.add(target%n);if(walk(nextFound,nextRows,nextCols))return true}return false}return walk(new Set(),new Set(),new Set())}
+    /* Large boards previously used an unrestricted recursive search to prove
+       the hint chain. That can explore exponentially many equivalent orders.
+       The generator already knows the unique answer, so validate a concrete
+       player path instead: always take the most constrained colour region
+       whose remaining candidates are within the difficulty cap. */
+    function humanRegionChain(n,cats,regions,maxCandidates=2){
+      const catSet=new Set(cats),found=new Set(),rows=new Set(),cols=new Set(),foundRegions=new Set();
+      while(found.size<n){
+        let best=null;
+        for(let g=0;g<n;g++){
+          if(foundRegions.has(g))continue;
+          let candidates=[];
+          for(let p=0;p<n*n;p++){
+            if(regions[p]!==g||rows.has(Math.floor(p/n))||cols.has(p%n))continue;
+            let r=Math.floor(p/n),c=p%n,blocked=false;
+            for(const q of found){let y=Math.floor(q/n),x=q%n;if(Math.abs(y-r)<=1&&Math.abs(x-c)<=1){blocked=true;break}}
+            if(!blocked)candidates.push(p);
+          }
+          const answer=candidates.find(p=>catSet.has(p));
+          if(answer!=null&&candidates.length>0&&candidates.length<=maxCandidates&&(!best||candidates.length<best.candidates.length))best={g,answer,candidates};
+        }
+        if(!best)return false;
+        found.add(best.answer);foundRegions.add(best.g);rows.add(Math.floor(best.answer/n));cols.add(best.answer%n);
+      }
+      return true;
+    }
     function regionsAreConnected(n,regions){for(let g=0;g<n;g++){let cells=regions.map((x,i)=>x===g?i:-1).filter(x=>x>=0);if(!cells.length)return false;let seen=new Set([cells[0]]),q=[cells[0]];while(q.length){let p=q.shift();neighbors(p,n).forEach(v=>{if(regions[v]===g&&!seen.has(v)){seen.add(v);q.push(v)}})}if(seen.size!==cells.length)return false}return true}
     function buildBalancedRegions(n,cats,difficulty,hintMax){let regions=Array(n*n).fill(-1),sizes=Array(n).fill(1),front=Array.from({length:n},()=>[]);cats.forEach((p,g)=>{regions[p]=g;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})});let hintGroup=hintMax?rand([...Array(n).keys()]):-1,remaining=n*n-n;while(remaining){let active=front.map((cells,g)=>cells.some(p=>regions[p]<0)?g:-1).filter(g=>g>=0);if(!active.length)return null;if(hintGroup>=0&&sizes[hintGroup]>=hintMax){let other=active.filter(g=>g!==hintGroup);if(other.length)active=other}let smallest=Math.min(...active.map(g=>sizes[g])),pool=active.filter(g=>sizes[g]===smallest);if(difficulty==='hard')pool=active.filter(g=>sizes[g]<=smallest+1);let g=rand(pool),candidates=shuffle(front[g].filter(p=>regions[p]<0));if(!candidates.length)continue;let p=candidates[0];regions[p]=g;sizes[g]++;remaining--;neighbors(p,n).forEach(v=>{if(regions[v]<0)front[g].push(v)})}return regions}
     function buildRandomRegions(n,forceSmall){
@@ -115,6 +140,42 @@
       }
       return regions;
     }
+    /* Construct a proof-carrying large-board layout. Region 0 is a singleton.
+       Every non-animal square added to region k conflicts with at least one
+       earlier animal (same row, same column, or eight-direction neighbour).
+       Therefore the regions force animals 0…N-1 in order, which gives a
+       short logical solve path and makes the exact uniqueness check trivial. */
+    function buildChainedRegions(n,cats){
+      const regions=Array(n*n).fill(-1),sizes=Array(n).fill(0);
+      const blockedByEarlier=(p,k)=>{
+        const r=Math.floor(p/n),c=p%n;
+        for(let q=0;q<k;q++){const animal=cats[q],ar=Math.floor(animal/n),ac=animal%n;if(r===ar||c===ac||(Math.abs(r-ar)<=1&&Math.abs(c-ac)<=1))return true}
+        return false;
+      };
+      /* Reserve each bridge before growing. A bridge one row above animal k
+         is already excluded by the previous row's animal and keeps its
+         region connected from the very first expansion. */
+      regions[cats[0]]=0;sizes[0]=1;
+      for(let k=1;k<n;k++){
+        const animal=cats[k],bridge=animal-n;
+        if(regions[animal]>=0||regions[bridge]>=0)return null;
+        regions[animal]=k;regions[bridge]=k;sizes[k]=2;
+      }
+      let remaining=regions.filter(g=>g<0).length;
+      while(remaining){
+        const active=[];
+        for(let k=1;k<n;k++){
+          const options=[];
+          for(let p=0;p<n*n;p++)if(regions[p]===k)for(const v of neighbors(p,n))if(regions[v]<0&&blockedByEarlier(v,k)&&!options.includes(v))options.push(v);
+          if(options.length)active.push({k,options});
+        }
+        if(!active.length)return null;
+        const smallest=Math.min(...active.map(x=>sizes[x.k]));
+        const choice=rand(active.filter(x=>sizes[x.k]<=smallest+1));
+        const pick=rand(choice.options);regions[pick]=choice.k;sizes[choice.k]++;remaining--;
+      }
+      return regions;
+    }
     /*
       Unique-solution repair is deliberately counterexample driven.
       Given the solver's second answer, move one of its non-target cells into
@@ -124,41 +185,45 @@
       moved.  Every mutation is rolled back unless all regions stay connected
       and the exact solver still finds the target answer.
     */
+    function remainsConnectedAfterRemoval(n,regions,group,removed,groupSize){
+      if(groupSize<=1)return false;
+      let start=-1;for(let p=0;p<n*n;p++)if(p!==removed&&regions[p]===group){start=p;break}
+      let seen=new Set([start]),stack=[start];
+      while(stack.length){let p=stack.pop();for(const v of neighbors(p,n))if(v!==removed&&regions[v]===group&&!seen.has(v)){seen.add(v);stack.push(v)}}
+      return seen.size===groupSize-1;
+    }
     function repairUnique(n,cats,regions){
       const targetSet=new Set(cats);
       const targetKey=cats.slice().sort((a,b)=>a-b).join(',');
       const sameAnswer=(sol)=>sol&&sol.length===n&&sol.slice().sort((a,b)=>a-b).join(',')===targetKey;
-      const deadline=Date.now()+Math.max(1200, n>=10?8500:1800);
-      for(let round=0;round<Math.min(180, n*n*2);round++){
+      const sizes=regionSizes(regions,n);
+      let singleCount=sizes.filter(x=>x===1).length;
+      const deadline=Date.now()+Math.max(900,n>=10?2600:1800);
+      for(let round=0;round<Math.min(100,n*n);round++){
         if(Date.now()>deadline) return null;
         const altList=findSolutions(n,regions,1,targetKey);
         if(!altList.length) return regions;
         const alt=altList[0];
-        const targetGroups=cats.map(p=>regions[p]);
+        const altGroups=new Set(alt.map(p=>regions[p]));
         const candidates=shuffle(alt.filter(p=>!targetSet.has(p)));
         let changed=false;
         for(const p of candidates){
           const old=regions[p];
-          const oldSize=regionSizes(regions,n)[old];
-          if(oldSize<=1) continue;
-          const adjacentGroups=[...new Set(neighbors(p,n).filter(v=>regions[v]!==old).map(v=>regions[v]))];
-          const preferred=shuffle(targetGroups.filter(g=>g!==old&&adjacentGroups.includes(g)));
-          const fallback=shuffle([...Array(n).keys()].filter(g=>g!==old&&!adjacentGroups.includes(g)));
-          const targets=preferred.concat(fallback);
+          if(sizes[old]<=1||!remainsConnectedAfterRemoval(n,regions,old,p,sizes[old]))continue;
+          /* Merge this alternative's cell into a neighbouring colour used by
+             another alternative cell. The known answer is unaffected, while
+             this counterexample immediately repeats a colour and is killed. */
+          const targets=shuffle([...new Set(neighbors(p,n).map(v=>regions[v]).filter(g=>g!==old&&altGroups.has(g)))]);
           for(const g of targets){
-            if(g===old) continue;
+            const nextSingles=singleCount+(sizes[old]===2?1:0)-(sizes[g]===1?1:0);
+            if(nextSingles>1)continue;
             regions[p]=g;
-            const sizes=regionSizes(regions,n);
-            const validShape=sizes[g]>0&&sizes[old]>0&&regionsAreConnected(n,regions);
-            if(validShape){
-              const next=findSolutions(n,regions,2);
-              if(next.length===1&&sameAnswer(next[0])) return regions;
-              if(next.length===2){changed=true;break;}
-            }
-            regions[p]=old;
+            sizes[old]--;sizes[g]++;singleCount=nextSingles;
+            /* The destination is orthogonally adjacent, so it stays connected;
+               only the source region needs the local check above. */
+            changed=true;break;
           }
           if(changed) break;
-          regions[p]=old;
         }
         if(!changed) return null;
       }
@@ -168,9 +233,25 @@
       const large=n>=8;
       /* On large boards area balance is a soft presentation constraint; keep
          enough headroom for the uniqueness repair to reshape boundaries. */
-      const maxSpread=hintMax?(large?Math.max(n+4,Math.ceil(n*.95)):Math.max(n+1,Math.ceil(n*.2))):(large?Math.max(n+4,Math.ceil(n*.95)):(n>=6?n:Math.max(2,Math.ceil(n*.2))));
+      const maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+4,Math.ceil(n*.95))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+4,Math.ceil(n*.95))):(n>=6?n:Math.max(2,Math.ceil(n*.2))));
       const needChain=hintMax>0;
       const chainCap=hintMax===3?3:(large?(n>=13?10:(n>=11?8:6)):(n>=6?3:2));
+      /* 10×10+ non-expert maps use a constructive chain before falling back
+         to repair-based search. It has one singleton opening clue and a
+         forced next region at each step, so it is both faster and markedly
+         more reliable than repairing dozens of arbitrary jigsaws. */
+      if(n>=10&&difficulty!=='expert'){
+        for(let attempt=0;attempt<40;attempt++){
+          const planted=findSolution(n),regions=planted&&buildChainedRegions(n,planted);
+          if(!regions||regionSpread(regions,n)>maxSpread||!humanRegionChain(n,planted,regions,chainCap))continue;
+          const sols=findSolutions(n,regions,2),key=planted.slice().sort((a,b)=>a-b).join(',');
+          if(sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===key)return {regions,cats:planted,verified:true};
+        }
+        /* Do not fall through to the older repair search here: a rare failed
+           constructive batch should be retried immediately, never turn into
+           a multi-second UI stall. generate() already retries three batches. */
+        return null;
+      }
       const tries=n<=7?300:n<=10?70:n<=12?55:40;
       for(let i=0;i<tries;i++){
         /* Generate the jigsaw first, then let the exact solver choose the
@@ -207,7 +288,7 @@
     function onDouble(i){if(!play||play.found.has(i)||play.errors.has(i)||i===level.revealed)return;if(level.cats.includes(i)){play.found.add(i);toast('找对了，这里有一只猫 🐾');}else{play.errors.add(i);play.lives--;toast(play.lives?'这里没有猫，扣除 1 格生命':'生命耗尽，可观看广告恢复');}render();if(play.found.size+(level.revealed!=null?1:0)>=level.size)toast('关卡完成！所有猫咪都找到了 🎉');}
     function renderPalette(){let p=$('palette');if(!p)return;p.innerHTML='';for(let i=0;i<level.size;i++){let b=document.createElement('button');b.className='swatch'+(editColor===i?' active':'');b.style.background=COLORS[i%COLORS.length];b.title='区域 '+(i+1);b.addEventListener('click',()=>{editColor=i;if(selected>=0&&!play){level.regions[selected]=i;render();}});p.appendChild(b)}}
     function regionsConnected(){return regionsAreConnected(level.size,level.regions)}
-    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?Math.max(n+2,Math.ceil(n*.7)):Math.max(n+1,Math.ceil(n*.2))):(large?Math.max(n+2,Math.ceil(n*.7)):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?6:4):2)),validCounts=counts.length===n&&counts.every(x=>x>0),sols=validCounts&&connected?findSolutions(n,level.regions,2):[],answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey,unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在不连通的同色区域':validCounts?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
+    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?10:(n>=11?8:6)):2)),validCounts=counts.length===n&&counts.every(x=>x>0),sols=validCounts&&connected?findSolutions(n,level.regions,2):[],answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey,unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
     function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
     function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
     function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
