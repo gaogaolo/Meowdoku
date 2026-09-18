@@ -38,7 +38,7 @@
         </section>
         <section class="panel">
           <div id="configPanel"><h3>关卡配置</h3>
-            <div class="field"><label>关卡 ID <span>用于区分每一关的 JSON 配置</span></label><input id="levelId" class="number-input" type="number" min="1" step="1" value="1" inputmode="numeric"><div class="hint">导出时会写入 JSON 的 <code>Id</code> 字段。</div></div>
+            <div class="field"><label>关卡 ID <span>用于区分每一关的 JSON 配置</span></label><input id="levelId" class="number-input" type="number" min="1" step="1" value="1" inputmode="numeric"><div class="hint">导出字段：<code>Id</code>、<code>Size</code>、<code>Regions</code>、<code>Animals</code>、<code>Revealed</code>、<code>Difficulty</code>。</div></div>
             <div class="field"><label>地图大小 <span>4 - 15 格</span></label><input id="size" class="number-input" type="number" min="4" max="15" value="7" inputmode="numeric"><div class="hint">地图为 N × N，固定生成 N 只猫和 N 个颜色区域。</div></div>
             <div class="field"><label>难度选择 <span>影响区域形状与推理链</span></label><select id="difficulty" class="select"><option value="easy">轻松 · Easy</option><option value="normal" selected>标准 · Normal</option><option value="hard">进阶 · Hard</option><option value="expert">挑战 · Expert</option></select></div>
             <div class="field"><div class="switch-line"><div><strong>开局显示一只猫</strong><div class="hint">直接计入已找到，无需双击</div></div><label class="switch"><input id="reveal" type="checkbox"><span class="slider"></span></label></div></div>
@@ -211,7 +211,7 @@
     function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
     function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
     function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
-    function levelPayload(){return {Id:level.id,size:level.size,regions:level.regions.slice(),cats:level.cats.slice(),revealed:level.revealed??null,difficulty:level.difficulty||'normal'}}
+    function levelPayload(){return {Id:level.id,Size:level.size,Regions:level.regions.slice(),Animals:level.cats.slice(),Revealed:level.revealed??null,Difficulty:level.difficulty||'normal'}}
     function exportJSON(){
       if(!level){toast('请先生成关卡');return}
       const blob=new Blob([JSON.stringify(levelPayload(),null,2)],{type:'application/json'});
@@ -222,26 +222,27 @@
       if(!data||typeof data!=='object')return [false,'JSON 格式无效'];
       const id=Number(data.Id??data.id??1);
       if(!Number.isInteger(id)||id<1)return [false,'Id 必须是大于 0 的整数'];
-      const n=Number(data.size);
+      const n=Number(data.Size??data.size),regions=data.Regions??data.regions,animals=data.Animals??data.animals??data.Cats??data.cats,revealed=data.Revealed??data.revealed;
       if(!Number.isInteger(n)||n<4||n>15)return [false,'地图大小需为 4 - 15'];
-      if(!Array.isArray(data.regions)||data.regions.length!==n*n)return [false,'regions 数量必须等于地图格数'];
-      if(!data.regions.every(x=>Number.isInteger(x)&&x>=0&&x<n))return [false,'regions 必须是 0 到 N-1 的整数'];
-      const counts=Array(n).fill(0);data.regions.forEach(x=>counts[x]++);
+      if(!Array.isArray(regions)||regions.length!==n*n)return [false,'Regions 数量必须等于地图格数'];
+      if(!regions.every(x=>Number.isInteger(x)&&x>=0&&x<n))return [false,'Regions 必须是 0 到 N-1 的整数'];
+      const counts=Array(n).fill(0);regions.forEach(x=>counts[x]++);
       if(counts.some(x=>x===0))return [false,'每种颜色都必须至少有一个格子'];
-      if(singleRegionCount(data.regions,n)>1)return [false,'单格颜色区域最多只能有 1 个'];
-      if(!regionsAreConnected(n,data.regions))return [false,'存在不连通的同色区域'];
-      if(!Array.isArray(data.cats)||data.cats.length!==n||new Set(data.cats).size!==n||!data.cats.every(p=>Number.isInteger(p)&&p>=0&&p<n*n))return [false,'cats 必须包含 N 个有效且不重复的格子'];
-      const rowSet=new Set(),colSet=new Set();for(const p of data.cats){const r=Math.floor(p/n),c=p%n;if(rowSet.has(r)||colSet.has(c))return [false,'cats 不能出现在同一行或同一列'];rowSet.add(r);colSet.add(c);}
-      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=data.cats[i],b=data.cats[j],ar=Math.floor(a/n),ac=a%n,br=Math.floor(b/n),bc=b%n;if(Math.abs(ar-br)<=1&&Math.abs(ac-bc)<=1)return [false,'cats 不能八方向相邻'];}
-      const catRegions=new Set(data.cats.map(p=>data.regions[p]));if(catRegions.size!==n)return [false,'cats 必须覆盖每一种颜色区域'];
-      const sols=findSolutions(n,data.regions,2),key=data.cats.slice().sort((a,b)=>a-b).join(',');
+      if(singleRegionCount(regions,n)>1)return [false,'单格颜色区域最多只能有 1 个'];
+      if(!regionsAreConnected(n,regions))return [false,'存在不连通的同色区域'];
+      if(!Array.isArray(animals)||animals.length!==n||new Set(animals).size!==n||!animals.every(p=>Number.isInteger(p)&&p>=0&&p<n*n))return [false,'Animals 必须包含 N 个有效且不重复的格子'];
+      const rowSet=new Set(),colSet=new Set();for(const p of animals){const r=Math.floor(p/n),c=p%n;if(rowSet.has(r)||colSet.has(c))return [false,'Animals 不能出现在同一行或同一列'];rowSet.add(r);colSet.add(c);}
+      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=animals[i],b=animals[j],ar=Math.floor(a/n),ac=a%n,br=Math.floor(b/n),bc=b%n;if(Math.abs(ar-br)<=1&&Math.abs(ac-bc)<=1)return [false,'Animals 不能八方向相邻'];}
+      const catRegions=new Set(animals.map(p=>regions[p]));if(catRegions.size!==n)return [false,'Animals 必须覆盖每一种颜色区域'];
+      const sols=findSolutions(n,regions,2),key=animals.slice().sort((a,b)=>a-b).join(',');
       if(sols.length!==1||sols[0].slice().sort((a,b)=>a-b).join(',')!==key)return [false,sols.length===0?'当前区域无解':'当前区域不是唯一解'];
-      const reveal=data.revealed==null?null:Number(data.revealed);if(reveal!=null&&(!data.cats.includes(reveal)))return [false,'revealed 必须是 cats 中的格子'];
+      const reveal=revealed==null?null:Number(revealed);if(reveal!=null&&(!animals.includes(reveal)))return [false,'Revealed 必须是 Animals 中的格子'];
       return [true,'ok'];
     }
     function applyImportedData(data){
       const check=validateImported(data);if(!check[0]){toast('导入失败：'+check[1]);return false}
-      level={id:Number(data.Id??data.id??1),size:Number(data.size),regions:data.regions.slice(),cats:data.cats.slice(),revealed:data.revealed==null?null:Number(data.revealed),difficulty:['easy','normal','hard','expert'].includes(data.difficulty)?data.difficulty:'normal',verified:true};
+      const regions=data.Regions??data.regions,animals=data.Animals??data.animals??data.Cats??data.cats,revealed=data.Revealed??data.revealed,difficulty=data.Difficulty??data.difficulty;
+      level={id:Number(data.Id??data.id??1),size:Number(data.Size??data.size),regions:regions.slice(),cats:animals.slice(),revealed:revealed==null?null:Number(revealed),difficulty:['easy','normal','hard','expert'].includes(difficulty)?difficulty:'normal',verified:true};
       play=null;selected=-1;$('levelId').value=level.id;$('size').value=level.size;$('difficulty').value=level.difficulty;$('reveal').checked=level.revealed!=null;render();setStatus('唯一解已验证','ok');toast('关卡 JSON 导入成功');return true;
     }
     function importJSONString(raw){
