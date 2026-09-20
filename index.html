@@ -77,7 +77,6 @@
     }
     function countSolutions(n,regions){return findSolutions(n,regions,2).length}
     function regionSizes(regions,n){let counts=Array(n).fill(0);regions.forEach(g=>counts[g]++);return counts}
-    function singleRegionCount(regions,n){return regionSizes(regions,n).filter(x=>x===1).length}
     function regionSpread(regions,n){let sizes=regionSizes(regions,n);return Math.max(...sizes)-Math.min(...sizes)}
     function openingHintMax(difficulty,revealed){if(revealed||difficulty==='expert')return 0;return difficulty==='hard'?3:1}
     /* Large boards previously used an unrestricted recursive search to prove
@@ -216,7 +215,6 @@
       const targetKey=cats.slice().sort((a,b)=>a-b).join(',');
       const sameAnswer=(sol)=>sol&&sol.length===n&&sol.slice().sort((a,b)=>a-b).join(',')===targetKey;
       const sizes=regionSizes(regions,n);
-      let singleCount=sizes.filter(x=>x===1).length;
       const deadline=Date.now()+Math.max(900,n>=10?2600:1800);
       for(let round=0;round<Math.min(100,n*n);round++){
         if(Date.now()>deadline) return null;
@@ -234,10 +232,8 @@
              this counterexample immediately repeats a colour and is killed. */
           const targets=shuffle([...new Set(neighbors(p,n).map(v=>regions[v]).filter(g=>g!==old&&altGroups.has(g)))]);
           for(const g of targets){
-            const nextSingles=singleCount+(sizes[old]===2?1:0)-(sizes[g]===1?1:0);
-            if(nextSingles>1)continue;
             regions[p]=g;
-            sizes[old]--;sizes[g]++;singleCount=nextSingles;
+            sizes[old]--;sizes[g]++;
             /* The destination is orthogonally adjacent, so it stays connected;
                only the source region needs the local check above. */
             changed=true;break;
@@ -290,7 +286,7 @@
            variation. Repairing a counterexample can only worsen spread, so
            applying the final visual cap too early discarded viable boards. */
         let initialSpread=large?maxSpread+Math.max(2,Math.ceil(n*.25)):maxSpread+2;
-        let baseOk=regions&&singleRegionCount(regions,n)<=1&&(!hintMax||sizes.some(x=>x>=1&&x<=hintMax))&&regionSpread(regions,n)<=initialSpread;
+        let baseOk=regions&&(!hintMax||sizes.some(x=>x>=1&&x<=hintMax))&&regionSpread(regions,n)<=initialSpread;
         if(!baseOk||!regionsAreConnected(n,regions))continue;
         let sols=findSolutions(n,regions,2); if(!sols.length)continue;
         let cats=planted||sols[0];
@@ -310,7 +306,7 @@
     function onDouble(i){if(!play||play.found.has(i)||play.errors.has(i)||i===level.revealed)return;if(level.cats.includes(i)){play.found.add(i);toast('找对了，这里有一只猫 🐾');}else{play.errors.add(i);play.lives--;toast(play.lives?'这里没有猫，扣除 1 格生命':'生命耗尽，可观看广告恢复');}render();if(play.found.size+(level.revealed!=null?1:0)>=level.size)toast('关卡完成！所有猫咪都找到了 🎉');}
     function renderPalette(){let p=$('palette');if(!p)return;p.innerHTML='';for(let i=0;i<level.size;i++){let b=document.createElement('button');b.className='swatch'+(editColor===i?' active':'');b.style.background=COLORS[i];b.title='区域 '+(i+1);b.addEventListener('click',()=>{editColor=i;if(selected>=0&&!play){level.regions[selected]=i;level.certificate=false;render();}});p.appendChild(b)}}
     function regionsConnected(){return regionsAreConnected(level.size,level.regions)}
-    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),singleCount=singleRegionCount(level.regions,n),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?10:(n>=11?8:6)):2)),validCounts=counts.length===n&&counts.every(x=>x>0),certified=validCounts&&connected&&level.certificate&&n>=13&&verifyChainedUnique(n,level.cats,level.regions),sols=certified?[]:(validCounts&&connected?findSolutions(n,level.regions,2):[]),answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=certified||(sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey),unique=validCounts&&connected&&singleCount<=1&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':singleCount>1?'单格颜色区域超过 1 个':spread>maxSpread?'颜色区域面积差过大':!connected?'存在不连通的同色区域':validCounts?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
+    function validate(){if(!level)return;let n=level.size,counts=regionCounts(),connected=regionsConnected(),spread=regionSpread(level.regions,n),hintMax=openingHintMax(level.difficulty,level.revealed!=null),large=n>=8,maxSpread=hintMax?(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):Math.max(n+1,Math.ceil(n*.2))):(large?(n>=10?n+8:Math.max(n+2,Math.ceil(n*.7))):(n>=6?n:Math.max(2,Math.ceil(n*.2)))),hasOpeningHint=counts.some(x=>x>=1&&x<=hintMax),chainOk=!hintMax||humanRegionChain(n,level.cats,level.regions,hintMax===3?3:(large?(n>=12?10:(n>=11?8:6)):2)),validCounts=counts.length===n&&counts.every(x=>x>0),certified=validCounts&&connected&&level.certificate&&n>=13&&verifyChainedUnique(n,level.cats,level.regions),sols=certified?[]:(validCounts&&connected?findSolutions(n,level.regions,2):[]),answerKey=level.cats.slice().sort((a,b)=>a-b).join(','),answerMatches=certified||(sols.length===1&&sols[0].slice().sort((a,b)=>a-b).join(',')===answerKey),unique=validCounts&&connected&&(!hintMax||hasOpeningHint)&&chainOk&&spread<=maxSpread&&answerMatches;let hintText=hintMax===1?'需有一个 1 格颜色区域':'需有一个 1-3 格颜色区域';setStatus(unique?'唯一解 · 可试玩':hintMax&&!hasOpeningHint?hintText:!chainOk?'推理链不连续，下一只猫缺少明确线索':spread>maxSpread?'颜色区域面积差过大':!connected?'存在不连通的同色区域':validCounts?'存在多解、无解或答案已变化':'区域数量需检查',unique?'ok':'');toast(unique?'验证通过：唯一解':'当前关卡不满足全部规则：请调整区域或重新生成');}
     function setStatus(t,kind){$('statusText').textContent=t;$('boardBadge').innerHTML=`<i></i> ${t}`;$('notice').textContent=kind==='ok'?'这张关卡满足当前底层规则，可以进入试玩。':'规则引擎会在生成和验证时检查每行、每列、颜色和相邻限制。';$('notice').className='notice '+(kind||'')}
     function enterPlay(){if(!level){toast('请先生成关卡');return} if(play){play=null;$('modeBtn').textContent='进入试玩 →';$('modeBtn').classList.remove('playing');$('configPanel').classList.remove('hidden');$('editPanel').classList.remove('hidden');render();return} play={found:new Set(),errors:new Set(),notes:new Set(),lives:3};$('modeBtn').textContent='退出试玩';$('modeBtn').classList.add('playing');$('configPanel').classList.add('hidden');$('editPanel').classList.add('hidden');render()}
     function copyJSON(){if(!level){toast('请先生成关卡');return}const text=JSON.stringify(levelPayload(),null,2);$('jsonText').value=text;navigator.clipboard?.writeText(text);toast('关卡 JSON 已复制并写入文本框')}
@@ -331,7 +327,6 @@
       if(!regions.every(x=>Number.isInteger(x)&&x>=0&&x<n))return [false,'Regions 必须是 0 到 N-1 的整数'];
       const counts=Array(n).fill(0);regions.forEach(x=>counts[x]++);
       if(counts.some(x=>x===0))return [false,'每种颜色都必须至少有一个格子'];
-      if(singleRegionCount(regions,n)>1)return [false,'单格颜色区域最多只能有 1 个'];
       if(!regionsAreConnected(n,regions))return [false,'存在不连通的同色区域'];
       if(!Array.isArray(animals)||animals.length!==n||new Set(animals).size!==n||!animals.every(p=>Number.isInteger(p)&&p>=0&&p<n*n))return [false,'Animals 必须包含 N 个有效且不重复的格子'];
       const rowSet=new Set(),colSet=new Set();for(const p of animals){const r=Math.floor(p/n),c=p%n;if(rowSet.has(r)||colSet.has(c))return [false,'Animals 不能出现在同一行或同一列'];rowSet.add(r);colSet.add(c);}
